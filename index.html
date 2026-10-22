@@ -387,6 +387,9 @@ label,.lbl{font-size:12px;margin:14px 0 6px}
 .toast{bottom:calc(120px + env(safe-area-inset-bottom,0px));font-size:14px}
 
 .auth .tabs,.auth #pill,.auth .top{display:none}
+.pwrow{position:relative}.pwrow input{padding-right:50px}
+.eye{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:none;color:var(--muted);display:flex;align-items:center;justify-content:center}
+.eye svg{width:20px;height:20px}.eye[aria-pressed="true"]{color:var(--accent-ink)}
 .auth-wrap{max-width:420px;margin:0 auto;padding-top:5vh}
 .auth-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:22px;letter-spacing:-.035em;margin-bottom:28px}
 .auth-brand svg{width:28px;height:28px;color:var(--accent-ink)}
@@ -631,7 +634,8 @@ function authView(){
     <form id="authForm" novalidate>
       ${up?`<label for="aname">Имя</label><input type="text" id="aname" data-f="aname" autocomplete="given-name" value="${esc(a.name)}" placeholder="Как к вам обращаться">`:''}
       <label for="aemail">Email</label><input type="email" id="aemail" data-f="aemail" autocomplete="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(a.email)}" placeholder="name@example.com">
-      <label for="apass">Пароль</label><input type="password" id="apass" autocomplete="${up?'new-password':'current-password'}" placeholder="${up?'Минимум 6 символов':'Ваш пароль'}">
+      <label for="apass">Пароль</label><div class="pwrow"><input type="password" id="apass" autocomplete="${up?'new-password':'current-password'}" placeholder="${up?'Минимум 6 символов':'Ваш пароль'}"><button type="button" class="eye" data-a="eye" aria-label="Показать пароль" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+      ${up?`<label for="apass2">Повторите пароль</label><input type="password" id="apass2" autocomplete="new-password" placeholder="Ещё раз тот же пароль">`:''}
       <div class="err" id="aerr" role="alert"></div>
       <button class="btn btn-primary" type="submit" id="abtn">${up?'Создать аккаунт':'Войти'}</button>
     </form>
@@ -645,6 +649,7 @@ async function authgo(){
   a.email=email;if(up)a.name=name;
   if(!/^\S+@\S+\.\S+$/.test(email)){err.textContent='Введите email полностью, например name@mail.ru.';return}
   if(pass.length<6){err.textContent='Пароль: минимум 6 символов.';return}
+  if(up&&pass!==($('#apass2').value||'')){err.textContent='Пароли не совпадают. Введите один и тот же пароль дважды.';return}
   if(up&&!name){err.textContent='Введите имя.';return}
   S.ui.authBusy=true;btn.disabled=true;btn.textContent='Подождите…';err.textContent='';
   try{await authPassword(up?'up':'in',email,pass,name);location.reload()}
@@ -1368,6 +1373,7 @@ const A={
     closeSheet();if(ok)startSession(w,d);
   },
   rest(){startTimer()},
+  eye(t){const show=t.getAttribute('aria-pressed')!=='true';t.setAttribute('aria-pressed',show);t.setAttribute('aria-label',show?'Скрыть пароль':'Показать пароль');['apass','apass2'].forEach(id=>{const e=document.getElementById(id);if(e)e.type=show?'text':'password'})},
   amode(t){S.ui.auth.mode=t.dataset.v;S.ui.authMsg='';render()},
   reload(){S.status='saving';render();loadRemote()},
   exportjson:doExportJson,
