@@ -418,6 +418,9 @@ h1{font-size:33px;letter-spacing:-1px}
 .slotbox{background:var(--surface2);border-radius:14px;padding:12px;margin:6px 0 4px}
 .slotbox .planbox>div{background:var(--surface)}
 .weeks button{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wpos{display:block;color:var(--accent-ink);font-size:13px;font-weight:650;margin-top:16px;position:relative}
+.tabs .in{grid-template-columns:repeat(5,1fr)}
+.tabs button{font-size:10px}
 </style>
 </head>
 <body>
@@ -432,6 +435,7 @@ h1{font-size:33px;letter-spacing:-1px}
   <button data-a="tab" data-t="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 15l6-6M5.6 11.6l6.8 6.8M11.6 5.6l6.8 6.8M3.5 14.5l6 6M14.5 3.5l6 6"/></svg><span>Сегодня</span></button>
   <button data-a="tab" data-t="program"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span>Программа</span></button>
   <button data-a="tab" data-t="diary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 102.5-6L3.5 8.5"/><path d="M3.5 4v4.5H8M12 8v4l3 2"/></svg><span>Дневник</span></button>
+  <button data-a="tab" data-t="library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5z"/><path d="M4 20.5A2.5 2.5 0 006.5 23H20"/></svg><span>Справочник</span></button>
   <button data-a="tab" data-t="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>Настройки</span></button>
 </div></nav>
 <div id="sheetWrap" class="sheet-wrap" hidden><div class="backdrop" data-a="closesheet"></div><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
@@ -826,7 +830,7 @@ function render(){
   if(S.mode==='auth'){app.innerHTML=authView();app.classList.remove('has-bar');return}
   if(!S.program&&S.mode==='connecting')h='<div class="loading">Загружаю дневник…</div>';
   else if(!S.program&&S.ui.tab!=='settings')h=emptyView();
-  else h=({today:todayView,program:programView,diary:diaryView,settings:settingsView})[S.ui.tab]();
+  else h=({today:todayView,program:programView,diary:diaryView,library:libraryView,settings:settingsView})[S.ui.tab]();
   app.innerHTML=h;
   app.classList.toggle('has-bar',!!app.querySelector('.actionbar'));
   updatePill();tick();
@@ -882,7 +886,7 @@ function todayView(){
     const dn=(act.entries||[]).filter(e=>e.done).length;
     h+=`<div class="card hero" style="margin-top:22px"><div class="deco">${I.dumb}</div>
       <div class="eyebrow">Тренировка идёт</div>
-      <div class="meta" style="margin-top:14px">Неделя ${act.week} · ${esc(sname(act))} · ${esc(fmtShort(act.date))}</div>
+      <div class="wpos">${esc(sessPos(act))}</div><div class="meta" style="margin-top:6px">Цикл ${act.cycle||1} · Неделя ${act.week} · ${esc(sname(act))} · ${esc(fmtShort(act.date))}</div>
       <h1>${esc(sessName(act))}</h1><div class="meta">${esc(groupsOfIds((act.entries||[]).map(e=>e.exerciseId)))}</div>
       <div class="facts"><span>${I.check}${dn} из ${(act.entries||[]).length} упражнений</span><span>${I.reps}${workingSets(act)} рабочих подх.</span></div>
       <button class="btn btn-primary go" data-a="open" data-id="${act.id}" style="margin-top:16px"><span>Продолжить тренировку</span>${I.arrow}</button>
@@ -891,7 +895,7 @@ function todayView(){
     const plan=p.plans[n.week],ids=p.templates[n.day]||[];
     h+=`<div class="card hero" style="margin-top:22px"><div class="deco">${I.dumb}</div>
       <div class="eyebrow">Следующая тренировка</div>
-      <div class="meta" style="margin-top:14px">${esc(p.name)} · Цикл ${n.cycle} · Неделя ${n.week+1} · ${esc(pwname(p,n.week))}</div>
+      <div class="wpos">Тренировка №${n.week*N+n.day+1}/${N*M}</div><div class="meta" style="margin-top:6px">${esc(p.name)} · Цикл ${n.cycle} · Неделя ${n.week+1} · ${esc(pwname(p,n.week))}</div>
       <h1>${esc(dayNameP(p,n.day))}</h1><div class="meta">${esc(groupsOfP(p,n.day))}</div>
       <div class="facts"><span>${I.dumb}${ids.length} ${plural(ids.length,'упражнение','упражнения','упражнений')}</span><span>${I.reps}${plan.min}–${plan.max} повторений</span></div>
       ${ids.length?`<button class="btn btn-primary go" data-a="start" data-w="${n.week}" data-d="${n.day}" style="margin-top:16px"><span>Начать тренировку</span>${I.arrow}</button>`:`<p class="meta" style="margin-top:14px">В этой тренировке нет упражнений. Добавьте их в программе.</p>`}
@@ -906,7 +910,7 @@ function todayView(){
   <div class="sec-h"><h2>${esc(p.name)}</h2><button class="lnk" data-a="tab" data-t="program">Программы ${I.arrow}</button></div>
   ${weeksTabs(p,hw,'hweek')}
   <div class="grid2">${p.templates.map((ids,d)=>`<button class="dcard${hw===n.week&&d===n.day?' next':''}" data-a="hday" data-w="${hw}" data-d="${d}">
-    <span class="top-row"><span class="caps" style="font-size:10px">Тренировка ${d+1}</span>${I.arrow}</span>
+    <span class="top-row"><span class="caps" style="font-size:10px">Тренировка №${hw*N+d+1}/${N*M}</span>${I.arrow}</span>
     <h3>${esc(dayNameP(p,d))}</h3><span class="g">${esc(groupsOfP(p,d))}</span>
     <span class="ft"><span>${ids.length} ${plural(ids.length,'упражнение','упражнения','упражнений')}</span><span>${planStr(p.plans[hw])}</span></span></button>`).join('')}</div>`;
   if(done.length){
@@ -924,7 +928,7 @@ function workoutView(s){
   let h=`<div class="topline"><button class="back" data-a="closewo">${I.back} К тренировкам</button><span class="caps">${esc(sname(s))} · Неделя ${s.week}</span></div>`;
   if(e){
     h+=`<span class="tag">${esc(e.group||'Упражнение')}</span><h1 class="ex-title">${esc(e.exerciseName)}</h1>
-    <div class="sub">${esc(fmtDate(s.date,{day:'numeric',month:'long',year:'numeric'}))} · ${esc(sessName(s))}${s.status==='done'?' · завершена':''}</div>`;
+    <div class="sub">${esc(fmtDate(s.date,{day:'numeric',month:'long',year:'numeric'}))} · ${esc(sessName(s))}${s.status==='done'?' · завершена':''}</div><div class="meta" style="margin-top:2px">${esc(sessCtx(s))}</div>`;
   }else h+=`<h1>${esc(sessName(s))}</h1>`;
   h+=`<div class="exstrip">${ents.map((x,k)=>`<button class="exchip${x.done?' done':''}" data-a="ex" data-i="${k}" aria-current="${k===i}"><span class="no">${x.done&&k!==i?I.check:pad(k+1)}</span><span class="nm">${esc(x.exerciseName)}</span></button>`).join('')}
     <button class="exchip" data-a="addex"><span class="no">${I.plus}</span><span class="nm">Добавить</span></button></div>`;
@@ -944,7 +948,7 @@ function workoutView(s){
   const rows=historyRows(e.exerciseId).filter(r=>r.s.id!==s.id);
   h+=`<div class="sec-h"><h2>История упражнения</h2><span class="meta">${rows.length} ${plural(rows.length,'запись','записи','записей')}</span></div><p class="hint">Рабочие веса и повторы. Разминка — внутри записи.</p>`;
   if(rows.length){
-    h+=`<div class="card">${rows.slice(0,5).map(r=>`<div class="hrow"><div class="d"><span>${esc(fmtDate(r.s.date))} · ${esc(sessName(r.s))}</span><span>${esc(sname(r.s))}</span></div><div class="s">${entryLine(r.e)}</div>${r.e.note?`<div class="meta">${esc(r.e.note)}</div>`:''}</div>`).join('')}
+    h+=`<div class="card">${rows.slice(0,5).map(r=>`<div class="hrow"><div class="d"><span>${esc(fmtDate(r.s.date))} · ${esc(sessName(r.s))}</span><span>${esc(sname(r.s))}</span></div><div class="s">${entryLine(r.e)}</div><div class="meta" style="font-size:12px">${esc(sessCtx(r.s))}</div>${r.e.note?`<div class="meta">${esc(r.e.note)}</div>`:''}</div>`).join('')}
       ${rows.length>1?`<button class="btn btn-sm btn-line" data-a="hist" data-id="${esc(e.exerciseId)}" style="margin-top:6px">${I.hist} График и вся история</button>`:''}</div>`;
   }else h+=`<div class="card emptyst">${I.hist}<b>Здесь будет твоя история</b>После тренировки появятся дата, тип недели, веса и повторы.</div>`;
   return h+woBottom(s);
@@ -982,7 +986,7 @@ function programDetail(p){
     <div class="planbox">${[['sets','Подходы'],['min','Повт. от'],['max','Повт. до'],['rir','Запас']].map(([f,k])=>`<div><div class="caps">${k}</div><div class="v">${pl[f]}</div></div>`).join('')}</div>
   </div>`;
   p.templates.forEach((ids,d)=>{
-    h+=`<div class="card"><div class="card-h"><div><div class="caps" style="font-size:10px">Тренировка ${d+1}</div><h2 style="margin-top:6px">${esc(dayNameP(p,d))}</h2><div class="meta" style="font-size:13px;margin-top:2px">${esc(groupsOfP(p,d))}</div></div>${act&&ids.length?`<button class="btn btn-sm" data-a="hday" data-w="${w}" data-d="${d}" style="width:auto">${I.play} Начать</button>`:''}</div>
+    h+=`<div class="card"><div class="card-h"><div><div class="caps" style="font-size:10px">Тренировка №${w*N+d+1}/${N*M}</div><h2 style="margin-top:6px">${esc(dayNameP(p,d))}</h2><div class="meta" style="font-size:13px;margin-top:2px">${esc(groupsOfP(p,d))}</div></div>${act&&ids.length?`<button class="btn btn-sm" data-a="hday" data-w="${w}" data-d="${d}" style="width:auto">${I.play} Начать</button>`:''}</div>
       ${ids.length?ids.map((id,k)=>{const e=exById(id),sp=slotPlan(p,w,d,k),has=!!(p.overrides&&p.overrides[slotKey(w,d,k)]);return `<div class="pex"><span class="no">${pad(k+1)}</span><div class="n">${esc(e?e.name:id)}<small>${esc(e?e.group:'')} · ${planStr(sp)} · запас ${sp.rir}${has?' · своя нагрузка':''}</small></div><button class="ib" data-a="slotopen" data-d="${d}" data-k="${k}" aria-label="Настроить нагрузку">⚙</button></div>${slotEditor(p,w,d,k)}`}).join(''):'<div class="meta">Упражнений пока нет.</div>'}
     </div>`;
   });
@@ -1016,15 +1020,14 @@ function diaryView(){
   if(S.ui.histEx)return historyView(S.ui.histEx,true);
   let h=`<div class="caps">Каждый подход имеет значение</div><div class="dh"><h1 style="margin-top:10px">Дневник</h1><button class="btn btn-sm" data-a="export" style="width:auto">${I.dl} Копия</button></div>
   <p class="sub">Все тренировки по датам. Раскрой запись, чтобы увидеть подходы.</p>
-  <div class="seg"><button data-a="dseg" data-v="workouts" aria-pressed="${S.ui.diary==='workouts'}">Тренировки</button><button data-a="dseg" data-v="exercises" aria-pressed="${S.ui.diary==='exercises'}">Упражнения</button></div>`;
-  if(S.ui.diary==='exercises')return h+exercisesView();
+  `;
   const f=S.ui.filter;
   h+=`<div class="chips">${[['all','Все'],['light','Лёгкие'],['medium','Средние'],['heavy','Тяжёлые']].map(([k,t])=>`<button class="chip" data-a="dfilter" data-v="${k}" aria-pressed="${f===k}">${t}</button>`).join('')}</div>`;
   const list=sessionsList().filter(s=>f==='all'||sessKindKey(s)===f);
   if(!list.length)return h+'<div class="card emptyst">'+I.hist+'<b>Здесь появятся твои тренировки</b>Начни первую на вкладке «Сегодня».</div>';
   for(const s of list){
     const op=!!S.ui.expanded[s.id],ws=workingSets(s);
-    h+=`<div class="card"><button class="sess-h" data-a="dexp" data-id="${s.id}" aria-expanded="${op}"><span class="ic">${s.status==='done'?I.check:I.clock}</span><span class="tx"><span>${esc(fmtDate(s.date,{day:'numeric',month:'long',year:'numeric'}))}${s.status==='active'?' · не завершена':''}</span><b>${esc(sessName(s))}</b><span>${esc(sname(s))} · Неделя ${s.week} · ${ws} рабочих подх.${duration(s)?' · '+duration(s):''}</span></span>${I.chev}</button>
+    h+=`<div class="card"><button class="sess-h" data-a="dexp" data-id="${s.id}" aria-expanded="${op}"><span class="ic">${s.status==='done'?I.check:I.clock}</span><span class="tx"><span>${esc(fmtDate(s.date,{day:'numeric',month:'long',year:'numeric'}))}${s.status==='active'?' · не завершена':''}</span><b>${esc(sessName(s))}</b><span>${esc(sessCtx(s))} · ${ws} рабочих подх.${duration(s)?' · '+duration(s):''}</span></span>${I.chev}</button>
       ${op?`<div style="margin-top:12px">${(s.entries||[]).filter(e=>(e.sets||[]).length||e.note).map(e=>`<div class="sess-ex"><div style="font-weight:600">${esc(e.exerciseName)}</div><div class="s">${entryLine(e)||'<span class="muted">нет подходов</span>'}</div>${e.note?`<div class="meta">${esc(e.note)}</div>`:''}</div>`).join('')}
         ${s.note?`<div class="note-box" style="margin-top:8px">${esc(s.note)}</div>`:''}
         <div class="row" style="margin-top:12px"><button class="btn btn-sm" data-a="open" data-id="${s.id}">Открыть</button><button class="btn btn-sm btn-danger" data-a="delsess" data-id="${s.id}">Удалить</button></div></div>`:''}
@@ -1094,7 +1097,7 @@ function historyView(exId,inDiary){
   h+=`<div class="statgrid"><div><div class="caps">Тренировок</div><div class="v">${rows.length}</div></div>
     <div><div class="caps">Лучший рабочий${bestS?' · '+esc(fmtShort(bestS.date)):''}</div><div class="v">${best?esc(setText(mode,best)):'—'}</div></div></div>`;
   h+=chartSVG(rows,mode);
-  h+=`<div class="card">${rows.map(r=>`<div class="hrow"><div class="d"><span>${esc(fmtDate(r.s.date))} · ${esc(sessName(r.s))}</span><span>${esc(sname(r.s))}</span></div><div class="s">${entryLine(r.e)}</div>${r.e.note?`<div class="meta">${esc(r.e.note)}</div>`:''}</div>`).join('')}</div>`;
+  h+=`<div class="card">${rows.map(r=>`<div class="hrow"><div class="d"><span>${esc(fmtDate(r.s.date))} · ${esc(sessName(r.s))}</span><span>${esc(sname(r.s))}</span></div><div class="s">${entryLine(r.e)}</div><div class="meta" style="font-size:12px">${esc(sessCtx(r.s))}</div>${r.e.note?`<div class="meta">${esc(r.e.note)}</div>`:''}</div>`).join('')}</div>`;
   return h;
 }
 
@@ -1309,6 +1312,13 @@ function myoSave(){
   const idx=first<0?rest.length:first;e.sets=[...rest.slice(0,idx),...sets,...rest.slice(idx)];
   put('sessions/'+s.id,s);closeSheet();render();if(!c.bid)startTimer();
 }
+function posOf(p,w1,d){if(!p||!p.templates||!p.plans)return null;const N=p.templates.length,M=p.plans.length;if(!N||!M)return null;return {n:(w1-1)*N+d+1,total:N*M}}
+function sessPos(s){const q=posOf(sessProg(s),s.week,s.day);return q?'Тренировка №'+q.n+'/'+q.total:''}
+function sessCtx(s){return [sessPos(s),'Цикл '+(s.cycle||1),'Неделя '+s.week,s.weekName].filter(Boolean).join(' · ')}
+function libraryView(){
+  if(S.ui.histEx)return historyView(S.ui.histEx,true);
+  return `<div class="caps">Упражнения и результаты</div><h1 style="margin-top:10px">Справочник</h1><p class="sub">Все упражнения. Откройте карточку: техника и вся ваша история.</p>`+exercisesView();
+}
 function libById(id){const r=LIBRARY.find(x=>x[0]===id);return r?{id:r[0],name:r[1],group:r[2],mode:r[3]}:null}
 function ensureExercise(id){
   const p=prog();if(p.exercises.some(e=>e.id===id))return;
@@ -1390,9 +1400,10 @@ function backupText(root,sessions,now){
   for(const s of list){
     const p=pById(s.programId||'p-main');
     const name=s.dayName||(p&&p.dayNames&&p.dayNames[s.day])||('Тренировка '+(s.day+1));
+    const pos=(p&&p.templates&&p.plans&&p.templates.length&&p.plans.length)?' · Тренировка №'+((s.week-1)*p.templates.length+s.day+1)+'/'+(p.templates.length*p.plans.length):'';
     const kind=s.kind||(p&&p.plans[s.week-1]&&p.plans[s.week-1].kind)||['light','medium','heavy','heavy'][s.week-1]||'normal';
     L.push('════════════════════════════════════════');
-    L.push(`${dt(s.date)} · ${name} · неделя ${s.week} (${s.weekName||KN[kind]||''})${p?' · '+p.name:''}${s.status==='active'?' · не завершена':''}`);
+    L.push(`${dt(s.date)} · ${name}${pos} · неделя ${s.week} (${s.weekName||KN[kind]||''})${p?' · '+p.name:''}${s.status==='active'?' · не завершена':''}`);
     L.push('');
     for(const e of s.entries||[]){
       if(!(e.sets||[]).length&&!e.note)continue;
@@ -1471,7 +1482,7 @@ $('#fileIn').addEventListener('change',async ev=>{
 
 /* ---------- actions ---------- */
 const A={
-  tab(t){S.ui.tab=t.dataset.t;if(S.ui.tab!=='diary')S.ui.histEx=null;closeSheet();render();scrollTopApp()},
+  tab(t){S.ui.tab=t.dataset.t;if(S.ui.tab!=='library')S.ui.histEx=null;closeSheet();render();scrollTopApp()},
   storage(){openSheet(`<div class="grab"></div><div class="sh-head"><div class="sh-title">Сохранение</div><button class="x" data-a="closesheet" aria-label="Закрыть">×</button></div>${storageInfo()}`)},
   retry(){fails=0;S.status='saving';syncNow();closeSheet();render()},
   closesheet(){if(sheetCtx&&sheetCtx.type==='confirm')sheetCtx.res(false);closeSheet()},
@@ -1497,7 +1508,7 @@ const A={
   saveset:saveSet,
   async delset(){const c=sheetCtx;const ok=await confirmSheet({title:'Удалить подход?',ok:'Удалить',danger:true});closeSheet();if(!ok)return;const s=getS(c.sid);if(!s)return;s.entries[c.i].sets.splice(c.k,1);put('sessions/'+s.id,s);render()},
   exdone(){const s=curSession();const e=s.entries[S.ui.exIdx];e.done=!e.done;put('sessions/'+s.id,s);if(e.done){const nx=s.entries.findIndex((x,k)=>k>S.ui.exIdx&&!x.done);if(nx>=0)S.ui.exIdx=nx}render();scrollTopApp()},
-  hist(t){const id=t.dataset.id;if(S.ui.tab==='diary'&&wrap.hidden){S.ui.histEx=id;render();scrollTopApp()}else openSheet(historyView(id,false))},
+  hist(t){const id=t.dataset.id;if(S.ui.tab==='library'&&wrap.hidden){S.ui.histEx=id;render();scrollTopApp()}else openSheet(historyView(id,false))},
   histback(){S.ui.histEx=null;render()},
   replace(){
     const s=curSession(),i=S.ui.exIdx,e=s.entries[i];
