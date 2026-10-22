@@ -387,6 +387,7 @@ label,.lbl{font-size:12px;margin:14px 0 6px}
 .toast{bottom:calc(120px + env(safe-area-inset-bottom,0px));font-size:14px}
 
 .auth .tabs,.auth #pill,.auth .top{display:none}
+.icwrap{display:flex;justify-content:center;margin:12px 0}.icwrap canvas{width:240px;height:240px;border-radius:54px;touch-action:none;background:#0c0d0b;border:1px solid var(--line)}
 .pwrow{position:relative}.pwrow input{padding-right:50px}
 .eye{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:none;color:var(--muted);display:flex;align-items:center;justify-content:center}
 .eye svg{width:20px;height:20px}.eye[aria-pressed="true"]{color:var(--accent-ink)}
@@ -411,6 +412,7 @@ input[type=email],input[type=password]{width:100%;border:1px solid var(--line);b
 </div></nav>
 <div id="sheetWrap" class="sheet-wrap" hidden><div class="backdrop" data-a="closesheet"></div><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="fileIn" accept=".json,.txt,application/json,text/plain" hidden>
+<input type="file" id="iconIn" accept="image/*" hidden>
 <script>
 'use strict';
 const THEME_KEY='podhod.theme';
@@ -423,6 +425,7 @@ const AUTH_KEY='podhod.auth.v1';
 let auth=(()=>{try{const v=JSON.parse(localStorage.getItem(AUTH_KEY)||'null');return v&&v.refresh_token&&v.user_id?v:null}catch(e){return null}})();
 const UID=auth?auth.user_id:'guest';
 const LS_CACHE='podhod.cache.v2.'+UID, LS_OUT='podhod.outbox.v2.'+UID;
+try{const _d=localStorage.getItem('podhod.icon.v1');if(_d)document.querySelectorAll('link[rel="apple-touch-icon"],link[rel="icon"]').forEach(l=>{l.href=_d})}catch(e){}
 const WEEKS=[{name:'лёгкая',key:'light',color:'var(--w1)'},{name:'средняя',key:'medium',color:'var(--w2)'},{name:'тяжёлая',key:'heavy',color:'var(--w3)'},{name:'тяжёлая',key:'heavy',color:'var(--w3)'}];
 const MODE_LABEL={weight:'Вес, кг',assistance:'Помощь, кг',body:'Доп. вес, кг',added:'Доп. вес, кг'};
 const MODE_NAME={weight:'Со снарядом',assistance:'Гравитрон (помощь)',body:'Свой вес',added:'Свой вес + отягощение'};
@@ -622,6 +625,55 @@ function updatePill(){
   p.dataset.s=s;t.textContent=txt;
 }
 
+/* ---------- custom home-screen icon ---------- */
+const ICON_KEY='podhod.icon.v1';
+let IC=null;
+function applyIcon(){
+  try{
+    const d=localStorage.getItem(ICON_KEY);
+    document.querySelectorAll('link[rel="apple-touch-icon"],link[rel="icon"]').forEach(l=>{l.href=d||(l.rel==='icon'?'icon-192.png':'icon-180.png')});
+  }catch(e){}
+}
+function curIconSrc(){try{return localStorage.getItem(ICON_KEY)||'icon-180.png'}catch(e){return 'icon-180.png'}}
+function drawIcon(cv,size){
+  const ctx=cv.getContext('2d');ctx.fillStyle='#0c0d0b';ctx.fillRect(0,0,size,size);
+  const {img,zoom,ox,oy}=IC,base=Math.max(size/img.width,size/img.height)*zoom,w=img.width*base,h=img.height*base;
+  const mx=Math.max(0,(w-size)/2),my=Math.max(0,(h-size)/2);
+  ctx.drawImage(img,(size-w)/2+ox*mx,(size-h)/2+oy*my,w,h);
+}
+function openIconSheet(){
+  openSheet(`${sheetHead('Значок приложения','Перетащите фото и выберите масштаб')}
+    <div class="icwrap"><canvas id="icv" width="240" height="240"></canvas></div>
+    <label for="iczoom">Масштаб</label><input type="range" id="iczoom" min="1" max="3" step="0.01" value="1" style="width:100%;accent-color:var(--accent)">
+    <div class="stack" style="margin-top:16px"><button class="btn btn-primary" data-a="iconsave">${I.check} Сохранить значок</button><button class="btn btn-line" data-a="iconpick">Выбрать другое фото</button></div>`,{type:'icon'});
+  const cv=$('#icv');drawIcon(cv,240);
+  $('#iczoom').addEventListener('input',e=>{IC.zoom=+e.target.value;drawIcon(cv,240)});
+  let last=null;
+  cv.addEventListener('pointerdown',e=>{last={x:e.clientX,y:e.clientY};try{cv.setPointerCapture(e.pointerId)}catch(x){}});
+  cv.addEventListener('pointermove',e=>{
+    if(!last)return;
+    const dx=e.clientX-last.x,dy=e.clientY-last.y;last={x:e.clientX,y:e.clientY};
+    const base=Math.max(240/IC.img.width,240/IC.img.height)*IC.zoom,mx=(IC.img.width*base-240)/2,my=(IC.img.height*base-240)/2;
+    if(mx>0)IC.ox=Math.max(-1,Math.min(1,IC.ox+dx/mx));
+    if(my>0)IC.oy=Math.max(-1,Math.min(1,IC.oy+dy/my));
+    drawIcon(cv,240);
+  });
+  const end=()=>{last=null};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+}
+$('#iconIn').addEventListener('change',async ev=>{
+  const f=ev.target.files&&ev.target.files[0];ev.target.value='';if(!f)return;
+  const url=URL.createObjectURL(f),img=new Image();
+  try{img.src=url;await img.decode()}catch(e){URL.revokeObjectURL(url);toast('Не удалось открыть это фото');return}
+  IC={img,zoom:1,ox:0,oy:0};openIconSheet();
+});
+function iconDoneSheet(d){
+  openSheet(`${sheetHead('Значок сохранён')}
+    <div class="icwrap"><img src="${d}" alt="" style="width:96px;height:96px;border-radius:22px;border:1px solid var(--line)"></div>
+    <p class="small">Теперь добавьте приложение на экран «Домой»:</p>
+    <p class="meta">1. Откройте приложение в <b>Safari</b> (не с рабочего стола).<br>2. Нажмите «Поделиться» → «На экран “Домой”».<br>3. Если ярлык «Подход» уже есть, сначала удалите его: iOS берёт значок только в момент добавления.</p>
+    <button class="btn btn-primary" data-a="closesheet" style="margin-top:14px">Понятно</button>`);
+}
+
 /* ---------- auth screen ---------- */
 function authView(){
   const a=S.ui.auth,up=a.mode==='up';
@@ -640,6 +692,7 @@ function authView(){
       <button class="btn btn-primary" type="submit" id="abtn">${up?'Создать аккаунт':'Войти'}</button>
     </form>
     <p class="meta" style="margin-top:16px">Восстановить пароль через почту пока нельзя, поэтому запишите его в надёжное место.</p>
+    <button type="button" class="lnk" data-a="iconpick" style="margin-top:6px">Сменить значок приложения</button>
   </div>`;
 }
 async function authgo(){
@@ -1014,6 +1067,9 @@ function settingsView(){
   <div class="card"><div class="card-h"><h3>Аккаунт</h3></div><p class="small"><b>${esc(auth?auth.email:'')}</b></p><p class="meta">У каждого пользователя своя программа и своя история. Зайти можно с любого устройства.</p><button class="btn btn-sm btn-line" data-a="signout" style="margin-top:10px">Выйти из аккаунта</button></div>
   <div class="card"><div class="card-h"><h3>Сохранение</h3></div>${storageInfo()}</div>
   <div class="card"><div class="card-h"><h3>Тема оформления</h3></div><div class="themes">${THEMES.map(([k,t,b,a])=>`<button data-a="theme" data-v="${k}" aria-pressed="${ct===k}"><span class="sw" style="background:linear-gradient(135deg,${b} 50%,${a} 50%)"></span>${t}</button>`).join('')}</div></div>
+  <div class="card"><div class="card-h"><h3>Значок на рабочем столе</h3></div>
+    <div style="display:flex;align-items:center;gap:14px"><img src="${esc(curIconSrc())}" alt="" style="width:64px;height:64px;border-radius:15px;flex:none;border:1px solid var(--line)"><p class="meta" style="margin:0">Выберите своё фото из галереи. Значок применится, когда вы добавите приложение на экран «Домой» из Safari.</p></div>
+    <div class="row" style="margin-top:12px"><button class="btn btn-sm" data-a="iconpick">Выбрать фото</button><button class="btn btn-sm btn-line" data-a="iconreset">Сбросить</button></div></div>
   <div class="card"><div class="card-h"><h3>Резервная копия</h3></div><p class="meta">В дневнике сейчас ${n} ${plural(n,'тренировка','тренировки','тренировок')}. Текстовая копия читается как обычный документ: тренировки по датам, подходы и программа. В конце файла лежит блок для восстановления. Кнопка откроет меню iPhone: можно сохранить в «Файлы», Google Диск, «Заметки» или отправить себе.</p>
     <div class="stack" style="margin-top:12px"><button class="btn" data-a="export" ${p?'':'disabled'}>${I.dl} Сохранить копию (.txt)</button><button class="btn btn-line" data-a="exportjson" ${p?'':'disabled'}>Копия для восстановления (.json)</button><button class="btn btn-line" data-a="import">Восстановить из копии</button></div></div>
   ${p?`<div class="card"><div class="card-h"><h3>Отдых между подходами</h3></div><label for="rest" style="margin-top:0">Секунд (0 — не запускать таймер)</label><input type="text" id="rest" inputmode="numeric" data-f="rest" value="${p.restSeconds??120}"><p class="meta">Таймер стартует после каждого рабочего подхода. Звука нет: смотрите на плашку внизу экрана.</p></div>`:''}
@@ -1373,6 +1429,14 @@ const A={
     closeSheet();if(ok)startSession(w,d);
   },
   rest(){startTimer()},
+  iconpick(){$('#iconIn').click()},
+  iconsave(){
+    if(!IC)return;const cv=document.createElement('canvas');cv.width=cv.height=180;drawIcon(cv,180);
+    const d=cv.toDataURL('image/png');
+    try{localStorage.setItem(ICON_KEY,d)}catch(e){toast('Не удалось сохранить значок');return}
+    applyIcon();iconDoneSheet(d);if(S.ui.tab==='settings'&&S.mode!=='auth')requestRender();
+  },
+  iconreset(){try{localStorage.removeItem(ICON_KEY)}catch(e){}applyIcon();toast('Значок сброшен на стандартный');render()},
   eye(t){const show=t.getAttribute('aria-pressed')!=='true';t.setAttribute('aria-pressed',show);t.setAttribute('aria-label',show?'Скрыть пароль':'Показать пароль');['apass','apass2'].forEach(id=>{const e=document.getElementById(id);if(e)e.type=show?'text':'password'})},
   amode(t){S.ui.auth.mode=t.dataset.v;S.ui.authMsg='';render()},
   reload(){S.status='saving';render();loadRemote()},
