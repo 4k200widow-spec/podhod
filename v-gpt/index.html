@@ -444,6 +444,18 @@ html[data-tone="light"] .top::before,html[data-tone="light"] .hero::before,html[
 .auth-wrap::before{left:-24px;right:-24px;top:-10vh;height:300px;-webkit-mask-image:linear-gradient(180deg,#000 10%,transparent 100%);mask-image:linear-gradient(180deg,#000 10%,transparent 100%)}
 .hero .deco{display:none}
 html[data-pattern="off"] .top::before,html[data-pattern="off"] .hero::before,html[data-pattern="off"] .auth-wrap::before{display:none}
+
+/* pattern: input sheets + empty states */
+.sheet{isolation:isolate}
+.emptyst{position:relative;isolation:isolate}
+.sheet::before,.emptyst::before{content:"";position:absolute;z-index:-1;pointer-events:none;background:url(pattern/asanoha-ghost-dark.svg) 0 0/170px auto}
+html[data-tone="light"] .sheet::before,html[data-tone="light"] .emptyst::before{background-image:url(pattern/asanoha-ghost-light.svg)}
+.sheet::before{left:0;right:0;top:0;height:130px;border-radius:26px 26px 0 0;opacity:.7;-webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,transparent 100%)}
+.emptyst::before{inset:0;opacity:.9;-webkit-mask-image:radial-gradient(ellipse at 50% 45%,#000 0%,transparent 72%);mask-image:radial-gradient(ellipse at 50% 45%,#000 0%,transparent 72%)}
+html[data-pattern="soft"] .top::before,html[data-pattern="soft"] .hero::before,html[data-pattern="soft"] .auth-wrap::before{opacity:.5}
+html[data-pattern="soft"] .sheet::before{opacity:.38}
+html[data-pattern="soft"] .emptyst::before{opacity:.5}
+html[data-pattern="off"] .sheet::before,html[data-pattern="off"] .emptyst::before{display:none}
 </style>
 </head>
 <body>
@@ -1144,7 +1156,7 @@ function settingsView(){
   <div class="card"><div class="card-h"><h3>Аккаунт</h3></div><p class="small"><b>${esc(auth?auth.email:'')}</b></p><p class="meta">У каждого пользователя своя программа и своя история. Зайти можно с любого устройства.</p><button class="btn btn-sm btn-line" data-a="signout" style="margin-top:10px">Выйти из аккаунта</button></div>
   <div class="card"><div class="card-h"><h3>Сохранение</h3></div>${storageInfo()}</div>
   <div class="card"><div class="card-h"><h3>Тема оформления</h3></div><div class="themes">${[...PALETTES.map(p=>[p.id,p.label,p.description,p.bg,p.accent]),['system','Как в iPhone','Светлая или тёмная сама','#777','#d3f489']].map(([k,t,d,b,a])=>`<button data-a="theme" data-v="${k}" aria-pressed="${ct===k}"><span class="sw" style="background:linear-gradient(135deg,${b} 50%,${a} 50%)"></span><span class="tt"><b>${t}</b><small>${d}</small></span></button>`).join('')}</div></div>
-  <div class="card"><div class="card-h"><h3>Узор «асаноха»</h3></div><p class="meta" style="margin:0 0 10px">Тонкий фон на главной карточке, шапке и экране входа.</p><div class="seg" style="margin:0">${[['on','Включён'],['off','Выключен']].map(([k,t])=>`<button data-a="pattern" data-v="${k}" aria-pressed="${(()=>{try{return (localStorage.getItem(PATTERN_KEY)||'on')===k}catch(e){return k==='on'}})()}">${t}</button>`).join('')}</div></div>
+  <div class="card"><div class="card-h"><h3>Узор «асаноха»</h3></div><p class="meta" style="margin:0 0 10px">Тонкий фон на шапке, главной карточке, экране входа, окнах ввода подхода и пустых экранах.</p><div class="seg" style="margin:0">${[['on','Обычный'],['soft','Слабый'],['off','Выключен']].map(([k,t])=>`<button data-a="pattern" data-v="${k}" aria-pressed="${(()=>{try{return (localStorage.getItem(PATTERN_KEY)||'on')===k}catch(e){return k==='on'}})()}">${t}</button>`).join('')}</div></div>
   <div class="card"><div class="card-h"><h3>Значок на рабочем столе</h3></div>
     <div class="icons">${ICONS.map(([k,t])=>`<button data-a="iconset" data-v="${k}" aria-pressed="${curIconId()===k}"><img src="icons/${k}.png" alt=""><small>${t}</small></button>`).join('')}<button data-a="iconpick" aria-pressed="${curIconId()==='custom'}"><span class="plus">+</span><small>Своё фото</small></button></div>
     <p class="meta" style="margin-top:12px">Значок применится, когда вы добавите приложение на экран «Домой» из Safari. Если ярлык уже есть, удалите его и добавьте заново.</p></div>
