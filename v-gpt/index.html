@@ -687,6 +687,7 @@ async function loadRemote(){
   try{
     const [a,b]=await Promise.all([sbFetch('/rest/v1/user_data?select=root&limit=1'),sbFetch('/rest/v1/sessions?select=id,data&limit=2000')]);
     await chk(a);await chk(b);
+    try{const ur=await sbFetch('/auth/v1/user');if(ur.ok){const uj=await ur.json(),md=uj.user_metadata||(uj.user&&uj.user.user_metadata)||{};S.driveBackup=md.drive_backup||null}}catch(e){}
     const ra=await a.json(),rb=await b.json();
     if(v!==localVer){again=true}
     else{applyRemote(ra[0]||null,rb);if(!Object.keys(outbox).length){S.status='saved';S.err=''}}
@@ -859,6 +860,12 @@ let pendingRender=false;
 function isTyping(){const a=document.activeElement;return a&&$('#app').contains(a)&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.type!=='file'))}
 function requestRender(){if(isTyping()){pendingRender=true;return}render()}
 document.addEventListener('focusout',()=>setTimeout(()=>{if(pendingRender&&!isTyping()){pendingRender=false;render()}},0));
+function centerActiveChip(){
+  const st=document.querySelector('#app .exstrip'),ac=st&&st.querySelector('.exchip[aria-current="true"]');
+  if(!st||!ac)return;
+  const sr=st.getBoundingClientRect(),ar=ac.getBoundingClientRect();
+  st.scrollLeft+=(ar.left-sr.left)-(sr.width-ar.width)/2;
+}
 function scrollTopApp(){const m=$('#app');if(m)m.scrollTop=0}
 function render(){
   pendingRender=false;
@@ -870,6 +877,7 @@ function render(){
   else if(!S.program&&S.ui.tab!=='settings')h=emptyView();
   else h=({today:todayView,program:programView,diary:diaryView,library:libraryView,settings:settingsView})[S.ui.tab]();
   app.innerHTML=h;
+  centerActiveChip();
   app.classList.toggle('has-bar',!!app.querySelector('.actionbar'));
   updatePill();tick();
 }
@@ -1139,12 +1147,20 @@ function historyView(exId,inDiary){
   return h;
 }
 
+function driveLine(){
+  const d=S.driveBackup;if(!d||!d.at)return '';
+  const t=new Date(d.at);if(isNaN(t.getTime()))return '';
+  const now=new Date(),yd=new Date(now.getTime()-864e5),stale=(now.getTime()-t.getTime())>36*36e5;
+  const day=now.toDateString()===t.toDateString()?'сегодня':(yd.toDateString()===t.toDateString()?'вчера':t.toLocaleDateString('ru-RU',{day:'numeric',month:'long'}));
+  const tm=t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  return `<p style="margin:6px 0"><b style="color:var(${stale?'--warn':'--ok'})">Копия в Google Диск: ${day}, ${tm}.</b>${d.sessions!=null?' Тренировок в копии: '+d.sessions+'.':''}${stale?' Копия давно не создавалась: проверьте запуск в Apps Script.':''}</p>`;
+}
 function storageInfo(){
   const n=pendingCount();let st;
   if(S.status==='error')st=`<p style="color:var(--bad)"><b>${n?'Не сохранено.':'Нет связи.'}</b> ${esc(S.err)}</p>`;
   else if(n)st=`<p><b>Отправляю изменения на сервер…</b> В очереди: ${n}.</p>`;
   else st=`<p><b style="color:var(--ok)">Всё сохранено на сервере.</b>${S.lastSaved?' Последнее подтверждение в '+fmtTime(S.lastSaved)+'.':''}</p>`;
-  return `${st}
+  return `${st}${driveLine()}
   <p class="meta">Данные хранятся на сервере в вашем аккаунте. Видите их только вы, с любого устройства, где вы вошли.</p>
   <p class="meta">Статус «Сохранено» появляется только после подтверждения сервера. Пока связи нет, записи лежат в памяти телефона и отправятся сами, даже если закрыть приложение.</p>
   ${n||S.status==='error'?'<button class="btn btn-sm" data-a="retry" style="margin-top:8px">Повторить отправку</button>':''}`;
