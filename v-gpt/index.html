@@ -1616,6 +1616,12 @@ function postSets(e){
   ids.forEach(b=>parts.push('Myo: '+blockSummary(e.sets.filter(x=>x.myoBlockId===b),e.mode)));
   return parts.join(' · ');
 }
+function postSetLines(e){
+  const lines=[],ids=myoBlockIds(e);let n=0;
+  for(const x of (e.sets||[])){if(x.warmup||x.myoBlockId)continue;n++;lines.push(n+'. '+setText(e.mode,x))}
+  ids.forEach((b,bi)=>{let m=0;for(const x of e.sets.filter(y=>y.myoBlockId===b))lines.push('Myo'+(ids.length>1?' '+(bi+1):'')+' · '+(x.myoRole==='activation'?'активация':'мини '+(++m))+': '+setText(e.mode,x))});
+  return lines;
+}
 function buildPost(s){
   const q=posOf(sessProg(s),s.week,s.day),dm=durMin(s);
   const ctx=['Цикл '+(s.cycle||1),'Неделя '+s.week,sname(s)].filter(Boolean).join(' · ');
@@ -1625,8 +1631,10 @@ function buildPost(s){
   let sets=0,vol=0;
   for(const e of ents)for(const st of workSets(e)){if(e.mode==='weight'||e.mode==='added')vol+=st.weight*st.reps;if(st.myoRole!=='mini')sets++}
   const tot='📊 Рабочих подходов: '+sets+(vol>0?' · объём '+fmtVol(vol):'');
-  const full=ents.map(e=>'<b>'+esc(e.exerciseName)+'</b>\n'+esc(postSets(e)));
-  let text=head.join('\n')+'\n\n'+full.join('\n\n')+'\n\n'+tot;
+  const mk=(fn,sep)=>head.join('\n')+'\n\n'+ents.map(e=>'<b>'+esc(e.exerciseName)+'</b>\n'+fn(e)).join(sep)+'\n\n'+tot;
+  let text=mk(e=>esc(postSetLines(e).join('\n')),'\n\n');
+  if(text.length>3900)text=mk(e=>esc(postSetLines(e).join('\n')),'\n');
+  if(text.length>3900)text=mk(e=>esc(postSets(e)),'\n');
   if(text.length>3900){
     const short=ents.map(e=>{const t=topOf(e);return '<b>'+esc(e.exerciseName)+'</b> — '+workSets(e).length+' подх., лучший '+esc(setText(e.mode,t))});
     text=head.join('\n')+'\n\n'+short.join('\n')+'\n\n'+tot;
