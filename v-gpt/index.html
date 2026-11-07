@@ -1005,10 +1005,10 @@ function workoutView(s){
   h+=`<div class="card target"><div><div class="caps">Подходы</div><div class="v">${pl.sets??'–'}</div></div><div><div class="caps">Повторения</div><div class="v">${pl.min!=null?pl.min+'–'+pl.max:'–'}</div></div><div><div class="caps">Запас повторов</div><div class="v">${pl.rir==null?'–':(pl.rir===0?'отказ':pl.rir)}</div></div></div>`;
   if(prev)h+=`<div class="prev"><span class="caps">Прошлый раз · ${esc(fmtShort(prev.s.date))} · ${esc(sname(prev.s))}</span>${entryLine(prev.e)}</div>`;
   h+=techCard(e.exerciseId);
-  h+=`<div class="card"><div class="card-h"><h3>Текущая тренировка</h3><span class="badge">${myoBlockIds(e).length?myoBlockIds(e).length+' '+plural(myoBlockIds(e).length,'блок','блока','блоков')+' Myo':ws+'/'+(pl.sets??'–')}</span></div>`;
+  h+=`<div class="card"><div class="card-h"><h3>Текущая тренировка</h3><span class="badge">${blockBadge(e,ws,pl)}</span></div>`;
   h+=methodSwitch(e);
   h+=setsBlock(e);
-  h+=`<div class="stack">${e.method==='myo'?`<button class="btn btn-primary" data-a="myoadd">${I.plus} Добавить блок Myo-reps</button><button class="btn btn-line" data-a="addwu">Добавить разминку</button>`:`<button class="btn btn-primary" data-a="addset">${I.plus} Добавить подход</button>`}
+  h+=`<div class="stack">${e.method==='drop'?`<button class="btn btn-primary" data-a="dropadd">${I.plus} Добавить дроп-сет</button><button class="btn btn-line" data-a="addwu">Добавить разминку</button>`:e.method==='myo'?`<button class="btn btn-primary" data-a="myoadd">${I.plus} Добавить блок Myo-reps</button><button class="btn btn-line" data-a="addwu">Добавить разминку</button>`:`<button class="btn btn-primary" data-a="addset">${I.plus} Добавить подход</button>`}
     <button class="btn" data-a="exdone">${I.check} ${e.done?'Снять отметку «завершено»':'Завершить упражнение'}</button></div>
     <label for="enote">Заметка к упражнению</label><textarea id="enote" data-f="enote" placeholder="Техника, самочувствие, особенности тренажёра…">${esc(e.note||'')}</textarea></div>
   <div class="linkrow"><button class="lnk" data-a="replace">${I.swap} Заменить упражнение</button><button class="lnk" data-a="rest">${I.clock} Отдых ${fmtRest()}</button></div>
@@ -1298,36 +1298,29 @@ function planEditor(e){
 
 /* ---------- Myo-reps ---------- */
 function wTxt(mode,w){return mode==='body'?'Свой вес':(mode==='added'?'+':mode==='assistance'?'Помощь ':'')+fmtN(w)+' кг'}
-function blockSummary(sets,mode){const ws=new Set(sets.map(x=>x.weight));return ws.size===1?wTxt(mode,sets[0].weight)+' · '+sets.map(x=>x.reps).join(' + ')+' повт.':sets.map(x=>wTxt(mode,x.weight)+' × '+x.reps).join(' + ')}
 function myoBlockIds(e){const ids=[];(e.sets||[]).forEach(x=>{if(x.myoBlockId&&ids.indexOf(x.myoBlockId)<0)ids.push(x.myoBlockId)});return ids}
-function entryLine(e){
-  const normal=(e.sets||[]).filter(x=>!x.myoBlockId),ids=myoBlockIds(e),parts=[];
-  if(normal.length)parts.push(setsLine(e.mode,normal));
-  ids.forEach((b,i)=>parts.push('<b>Myo'+(ids.length>1?' '+(i+1):'')+':</b> '+esc(blockSummary(e.sets.filter(x=>x.myoBlockId===b),e.mode))));
-  return parts.join(' · ');
-}
-function entryMethods(e){const w=(e.sets||[]).filter(x=>!x.warmup);return w.length?[...(w.some(x=>!x.myoBlockId)?['standard']:[]),...(w.some(x=>x.myoBlockId)?['myo']:[])]:[e.method||'standard']}
+function entryMethods(e){const w=(e.sets||[]).filter(x=>!x.warmup);if(!w.length)return [e.method||'standard'];const r=[];if(w.some(x=>!x.myoBlockId))r.push('standard');if(w.some(x=>x.myoBlockId&&x.blockKind!=='drop'))r.push('myo');if(w.some(x=>x.myoBlockId&&x.blockKind==='drop'))r.push('drop');return r}
 function matchesMethod(e,f){return f==='all'||entryMethods(e).indexOf(f)>=0}
 function suggestedMethod(id){
   const ex=exById(id);if(ex&&ex.preferredMethod)return ex.preferredMethod;
   const prior=historyRows(id).find(r=>(r.e.sets||[]).some(x=>!x.warmup));
   if(!prior)return 'standard';
-  return prior.e.method||((prior.e.sets||[]).some(x=>x.myoBlockId)?'myo':'standard');
+  return prior.e.method||((prior.e.sets||[]).some(x=>x.myoBlockId&&x.blockKind==='drop')?'drop':((prior.e.sets||[]).some(x=>x.myoBlockId)?'myo':'standard'));
 }
-function methodSwitch(e){return `<div class="seg" role="group" aria-label="Метод выполнения" style="margin:0 0 10px">${[['standard','Обычные'],['myo','Myo-reps']].map(([k,t])=>`<button type="button" data-a="method" data-v="${k}" aria-pressed="${(e.method||'standard')===k}">${t}</button>`).join('')}</div>`}
+function methodSwitch(e){return `<div class="seg" role="group" aria-label="Метод выполнения" style="margin:0 0 10px">${[['standard','Обычные'],['drop','Дроп-сет'],['myo','Myo-reps']].map(([k,t])=>`<button type="button" data-a="method" data-v="${k}" aria-pressed="${(e.method||'standard')===k}">${t}</button>`).join('')}</div>`}
 function prefCard(id){
   const ex=exById(id),v=(ex&&ex.preferredMethod)||'auto';
-  return `<div class="card"><label style="margin-top:0">Предпочитаемый метод</label><select data-f="prefm" data-id="${esc(id)}">${[['auto','Предлагать последний метод'],['standard','Обычные'],['myo','Myo-reps']].map(([k,t])=>`<option value="${k}" ${v===k?'selected':''}>${t}</option>`).join('')}</select><p class="meta" style="margin:8px 0 0">Это предложение для новых тренировок. Записанные тренировки не меняются.</p></div>`;
+  return `<div class="card"><label style="margin-top:0">Предпочитаемый метод</label><select data-f="prefm" data-id="${esc(id)}">${[['auto','Предлагать последний метод'],['standard','Обычные'],['drop','Дроп-сет'],['myo','Myo-reps']].map(([k,t])=>`<option value="${k}" ${v===k?'selected':''}>${t}</option>`).join('')}</select><p class="meta" style="margin:8px 0 0">Это предложение для новых тренировок. Записанные тренировки не меняются.</p></div>`;
 }
 function setPreferred(id,val){
   ensureExercise(id);const np=clone(S.program),ex=np.exercises.find(x=>x.id===id);if(!ex)return;
   if(val==='auto')delete ex.preferredMethod;else ex.preferredMethod=val;
   put('program',np);toast('Сохранено');
 }
-function methodChips(){const f=S.ui.histMethod||'all';return `<div class="chips" role="group" aria-label="Метод выполнения">${[['all','Все методы'],['standard','Обычные'],['myo','Myo-reps']].map(([k,t])=>`<button class="chip" data-a="hmethod" data-v="${k}" aria-pressed="${f===k}">${t}</button>`).join('')}</div>`}
+function methodChips(){const f=S.ui.histMethod||'all';return `<div class="chips" role="group" aria-label="Метод выполнения">${[['all','Все методы'],['standard','Обычные'],['drop','Дроп-сет'],['myo','Myo-reps']].map(([k,t])=>`<button class="chip" data-a="hmethod" data-v="${k}" aria-pressed="${f===k}">${t}</button>`).join('')}</div>`}
 function setsBlock(e){
   const sets=e.sets||[];
-  if(!sets.length)return `<div class="emptyst">${I.dumb}<b>${e.method==='myo'?'Добавьте активацию и мини-подходы':'Первый подход — начало прогресса'}</b>Разминку можно отметить отдельно</div>`;
+  if(!sets.length)return `<div class="emptyst">${I.dumb}<b>${e.method==='myo'?'Добавьте активацию и мини-подходы':(e.method==='drop'?'Добавьте дроп-сет: старт и сбросы веса':'Первый подход — начало прогресса')}</b>Разминку можно отметить отдельно</div>`;
   let h='';
   const normal=sets.map((st,k)=>[st,k]).filter(a=>!a[0].myoBlockId);
   if(normal.length){
@@ -1338,11 +1331,13 @@ function setsBlock(e){
       <td><button data-a="editset" data-k="${k}" tabindex="-1"><span class="big">${st.reps}</span></button></td>
       <td><button data-a="editset" data-k="${k}" tabindex="-1" class="more"><span class="big" style="font-weight:500;color:var(--muted)">${st.rir==null?'···':(st.rir>=4?'4+':st.rir)}</span></button></td></tr>`}).join('')}</tbody></table>`;
   }
-  myoBlockIds(e).forEach((bid,bi)=>{
-    const rows=sets.filter(x=>x.myoBlockId===bid),tot=rows.reduce((a,x)=>a+x.reps,0),vol=Math.round(rows.reduce((a,x)=>a+x.weight*x.reps,0)*100)/100;
-    h+=`<div class="myoblk"><div class="myoblk-h"><div><span class="badge">Myo-reps · блок ${bi+1}</span><div class="meta" style="margin-top:6px">${esc(blockSummary(rows,e.mode))}</div></div><button class="lnk" data-a="myoedit" data-b="${esc(bid)}">Изменить</button></div>
-      <table class="sets"><tbody>${rows.map((x,i)=>`<tr><td><span class="big">${x.myoRole==='activation'?'А':i}</span><span class="tg">${x.myoRole==='activation'?'активация':'мини-подход'}</span></td><td><span class="big">${e.mode==='body'?'—':fmtN(x.weight)+' кг'}</span>${x.note?`<span class="tg">${esc(x.note)}</span>`:''}</td><td><span class="big">${x.reps}</span></td></tr>`).join('')}</tbody></table>
-      <div class="meta">Всего ${tot} повт.${e.mode==='weight'?' · объём '+fmtN(vol)+' кг':''}</div></div>`;
+  const kc={myo:0,drop:0};
+  myoBlockIds(e).forEach(bid=>{
+    const rows=sets.filter(x=>x.myoBlockId===bid),kind=blockKind(rows),tot=rows.reduce((a,x)=>a+x.reps,0),vol=Math.round(rows.reduce((a,x)=>a+x.weight*x.reps,0)*100)/100,num=++kc[kind];
+    let m=0;
+    h+=`<div class="myoblk"><div class="myoblk-h"><div><span class="badge">${BLOCK_NAMES[kind]} · блок ${num}</span><div class="meta" style="margin-top:6px">${esc(blockSummary(rows,e.mode))}</div></div><button class="lnk" data-a="${kind==='drop'?'dropedit':'myoedit'}" data-b="${esc(bid)}">Изменить</button></div>
+      <table class="sets"><tbody>${rows.map(x=>{const top=x.myoRole==='activation',idx=top?0:++m;return `<tr><td><span class="big">${top?(kind==='drop'?'С':'А'):idx}</span><span class="tg">${roleText(kind,x.myoRole,idx)}</span></td><td><span class="big">${e.mode==='body'&&!x.weight?'—':fmtN(x.weight)+' кг'}</span>${x.note?`<span class="tg">${esc(x.note)}</span>`:''}</td><td><span class="big">${x.reps}</span></td></tr>`}).join('')}</tbody></table>
+      <div class="meta">Всего ${tot} повт.${(e.mode==='weight'||e.mode==='added')?' · объём '+fmtN(vol)+' кг':''}</div></div>`;
   });
   return h;
 }
@@ -1613,13 +1608,13 @@ function postSets(e){
   const sets=(e.sets||[]).filter(x=>!x.warmup&&!x.myoBlockId),ids=myoBlockIds(e),g=[],parts=[];
   for(const x of sets){const l=g[g.length-1];if(l&&l.w===x.weight&&l.r===x.reps)l.n++;else g.push({w:x.weight,r:x.reps,n:1})}
   g.forEach(x=>parts.push(setText(e.mode,{weight:x.w,reps:x.r})+(x.n>1?' ×'+x.n:'')));
-  ids.forEach(b=>parts.push('Myo: '+blockSummary(e.sets.filter(x=>x.myoBlockId===b),e.mode)));
+  ids.forEach(b=>{const rows=e.sets.filter(x=>x.myoBlockId===b);parts.push((blockKind(rows)==='drop'?'Дроп: ':'Myo: ')+blockSummary(rows,e.mode))});
   return parts.join(' · ');
 }
 function postSetLines(e){
   const lines=[],ids=myoBlockIds(e);let n=0;
   for(const x of (e.sets||[])){if(x.warmup||x.myoBlockId)continue;n++;lines.push(n+'. '+setText(e.mode,x))}
-  ids.forEach((b,bi)=>{let m=0;for(const x of e.sets.filter(y=>y.myoBlockId===b))lines.push('Myo'+(ids.length>1?' '+(bi+1):'')+' · '+(x.myoRole==='activation'?'активация':'мини '+(++m))+': '+setText(e.mode,x))});
+  const cnt={};ids.forEach(b=>{const rows=e.sets.filter(y=>y.myoBlockId===b),k=blockKind(rows),same=ids.filter(z=>blockKind(e.sets.filter(y=>y.myoBlockId===z))===k).length;cnt[k]=(cnt[k]||0)+1;let m=0;for(const x of rows)lines.push((k==='drop'?'Дроп':'Myo')+(same>1?' '+cnt[k]:'')+' · '+roleText(k,x.myoRole,x.myoRole==='activation'?0:++m)+': '+setText(e.mode,x))});
   return lines;
 }
 function buildPost(s){
@@ -1630,7 +1625,7 @@ function buildPost(s){
   const ents=(s.entries||[]).filter(e=>workSets(e).length);
   let sets=0,vol=0;
   for(const e of ents)for(const st of workSets(e)){if(e.mode==='weight'||e.mode==='added')vol+=st.weight*st.reps;if(st.myoRole!=='mini')sets++}
-  const tot='📊 Рабочих подходов: '+sets+(vol>0?' · объём '+fmtVol(vol):'');
+  const tot='📊 Рабочих подходов: '+sets+(vol>0?' · объём '+fmtVol(vol):'')+(q?'\n#т'+q.n:'');
   const mk=(fn,sep)=>head.join('\n')+'\n\n'+ents.map(e=>'<b>'+esc(e.exerciseName)+'</b>\n'+fn(e)).join(sep)+'\n\n'+tot;
   let text=mk(e=>esc(postSetLines(e).join('\n')),'\n\n');
   if(text.length>3900)text=mk(e=>esc(postSetLines(e).join('\n')),'\n');
@@ -1702,6 +1697,89 @@ function tgHelp(){
   openSheet(`${sheetHead('Публикация в Telegram-канал')}
     <p class="meta">1. В Telegram: @BotFather → /newbot → получите токен бота (секретный, никому не показывайте).<br>2. В канале: Администраторы → добавить бота с правом «Публикация сообщений».<br>3. В Supabase: Edge Functions → создать функцию tg-post и вставить код из файла tg-post (отключить «Enforce JWT verification»).<br>4. Там же в Secrets добавить: BOT_TOKEN, CHANNEL_ID (например @mychannel), OWNER_EMAIL (ваш email в приложении).<br>5. Вернуться сюда и нажать «Пробная публикация».</p>
     <button class="btn btn-primary" data-a="closesheet" style="margin-top:12px">Понятно</button>`);
+}
+
+/* ---------- block kinds (Myo-reps / drop sets share one storage model: myoBlockId + myoRole; blockKind:'drop' marks drop sets) ---------- */
+const BLOCK_NAMES={myo:'Myo-reps',drop:'Дроп-сет'};
+function blockKind(rows){return rows.some(x=>x.blockKind==='drop')?'drop':'myo'}
+function roleText(kind,role,idx){return kind==='drop'?(role==='activation'?'старт':'сброс '+idx):(role==='activation'?'активация':'мини '+idx)}
+function blockSummary(sets,mode){
+  if(blockKind(sets)==='drop'){
+    const pre=mode==='assistance'?'пом. ':(mode==='added'?'+':''),ws=sets.map(x=>x.weight),reps=sets.map(x=>x.reps).join(' + ');
+    if(mode==='body'&&ws.every(w=>!w))return reps+' повт.';
+    return pre+ws.map(w=>fmtN(w)).join(' → ')+' кг · '+reps+' повт.';
+  }
+  const w=new Set(sets.map(x=>x.weight));
+  return w.size===1?wTxt(mode,sets[0].weight)+' · '+sets.map(x=>x.reps).join(' + ')+' повт.':sets.map(x=>wTxt(mode,x.weight)+' × '+x.reps).join(' + ');
+}
+function entryLine(e){
+  const normal=(e.sets||[]).filter(x=>!x.myoBlockId),ids=myoBlockIds(e),parts=[],cnt={};
+  if(normal.length)parts.push(setsLine(e.mode,normal));
+  ids.forEach(b=>{
+    const rows=e.sets.filter(x=>x.myoBlockId===b),k=blockKind(rows);cnt[k]=(cnt[k]||0)+1;
+    const same=ids.filter(z=>blockKind(e.sets.filter(x=>x.myoBlockId===z))===k).length;
+    parts.push('<b>'+(k==='drop'?'Дроп':'Myo')+(same>1?' '+cnt[k]:'')+':</b> '+esc(blockSummary(rows,e.mode)));
+  });
+  return parts.join(' · ');
+}
+function blockBadge(e,ws,pl){
+  const ids=myoBlockIds(e);if(!ids.length)return ws+'/'+(pl.sets??'–');
+  const ks=ids.map(b=>blockKind(e.sets.filter(x=>x.myoBlockId===b))),nd=ks.filter(k=>k==='drop').length,nm=ks.length-nd;
+  return ids.length+' '+plural(ids.length,'блок','блока','блоков')+(nd&&!nm?' дроп':(nm&&!nd?' Myo':''));
+}
+
+/* ---------- drop sets ---------- */
+function dropOpen(bid){
+  const s=curSession();if(!s)return;const e=s.entries[S.ui.exIdx];if(!e)return;
+  const own=bid?e.sets.filter(x=>x.myoBlockId===bid):[],top=own[0];
+  const last=e.sets.filter(x=>!x.warmup).slice(-1)[0],pf=prevFor(e.exerciseId,s.id),pw=pf&&(pf.e.sets||[]).find(x=>!x.warmup);
+  const c={type:'drop',sid:s.id,i:S.ui.exIdx,bid:bid||null,mode:e.mode,name:e.exerciseName,
+    w:top?fmtN(top.weight):(last?fmtN(last.weight):(pw?fmtN(pw.weight):'')),r:top?String(top.reps):'',n:top?(top.note||''):'',topId:top?top.id:newId(),
+    drops:own.slice(1).map(x=>({id:x.id,w:fmtN(x.weight),r:String(x.reps),n:x.note||''})),err:''};
+  openSheet(dropHtml(c),c);
+}
+function dropTotals(c){
+  const rows=[{w:parseN(c.w),r:c.r}].concat(c.drops.map(d=>({w:parseN(d.w),r:d.r})));
+  if(!rows.every(x=>/^\d+$/.test(x.r)&&+x.r>=1&&+x.r<=300))return null;
+  const loaded=(c.mode==='weight'||c.mode==='added')&&rows.every(x=>isFinite(x.w));
+  return {reps:rows.reduce((a,x)=>a+(+x.r),0),vol:loaded?rows.reduce((a,x)=>a+x.w*(+x.r),0):null};
+}
+function dropHtml(c){
+  const wl=c.mode==='assistance'?'Помощь, кг':((c.mode==='added'||c.mode==='body')?'Доп. вес, кг':'Вес, кг'),t=dropTotals(c);
+  return `${sheetHead(c.bid?'Изменить дроп-сет':'Новый дроп-сет',c.name)}
+  <p class="meta">Старт и сбросы веса без отдыха между ними. У каждого сброса свой вес и повторы.</p>
+  <div class="entry"><div><label for="dr_w">${wl}</label><input id="dr_w" data-f="dr_w" class="bignum" inputmode="decimal" autocomplete="off" value="${esc(c.w)}"></div>
+  <div><label for="dr_r">Повторы (старт)</label><input id="dr_r" data-f="dr_r" class="bignum" inputmode="numeric" autocomplete="off" value="${esc(c.r)}"></div></div>
+  <details ${c.n?'open':''}><summary>Заметка к старту</summary><textarea data-f="dr_n" style="min-height:56px">${esc(c.n)}</textarea></details>
+  <div class="grp" style="margin-top:14px">Сбросы</div>
+  ${c.drops.map((d,k)=>`<div class="mini"><div class="mini-h"><span class="caps">№ ${k+1}</span><input class="inp" data-f="dd_w" data-i="${k}" inputmode="decimal" placeholder="${wl}" value="${esc(d.w)}"><input class="inp" data-f="dd_r" data-i="${k}" inputmode="numeric" placeholder="Повторы" value="${esc(d.r)}"><button class="ib" data-a="dropdelsub" data-i="${k}" aria-label="Убрать сброс">✕</button></div>
+    <details ${d.n?'open':''}><summary>Заметка к сбросу</summary><textarea data-f="dd_n" data-i="${k}" style="min-height:48px">${esc(d.n)}</textarea></details></div>`).join('')}
+  <button class="btn btn-line" data-a="dropaddsub" style="margin-top:6px">${I.plus} Добавить сброс</button>
+  <p class="small" style="margin:12px 0 0">Всего повторений: <b id="droptot">${t?t.reps:'—'}</b>${(c.mode==='weight'||c.mode==='added')?' · объём <b id="dropvol">'+(t&&t.vol!=null?fmtN(Math.round(t.vol))+' кг':'—')+'</b>':''}</p>
+  <div class="err" id="droperr" role="alert">${esc(c.err||'')}</div>
+  <div class="stack"><button class="btn btn-primary" data-a="dropsave">${I.check} Сохранить дроп-сет</button>${c.bid?`<button class="btn btn-danger" data-a="dropdel">Удалить дроп-сет</button>`:''}</div>`;
+}
+function dropRerender(){const c=sheetCtx;if(!c||c.type!=='drop')return;const y=sheet.scrollTop;sheet.innerHTML=dropHtml(c);sheet.scrollTop=y}
+function dropInput(t){
+  const c=sheetCtx;if(!c||c.type!=='drop')return;const f=t.dataset.f,i=+t.dataset.i;
+  if(f==='dr_w')c.w=t.value;else if(f==='dr_r')c.r=t.value;else if(f==='dr_n')c.n=t.value;
+  else if(f==='dd_w')c.drops[i].w=t.value;else if(f==='dd_r')c.drops[i].r=t.value;else if(f==='dd_n')c.drops[i].n=t.value;
+  const tt=dropTotals(c),a=document.getElementById('droptot');if(a)a.textContent=tt?tt.reps:'—';
+  const v=document.getElementById('dropvol');if(v)v.textContent=(tt&&tt.vol!=null)?fmtN(Math.round(tt.vol))+' кг':'—';
+}
+function dropSave(){
+  const c=sheetCtx;if(!c||c.type!=='drop')return;const err=$('#droperr');
+  const rows=[{id:c.topId,w:c.w,r:c.r,n:c.n}].concat(c.drops.map(d=>({id:d.id,w:d.w,r:d.r,n:d.n})));
+  for(const x of rows){if(!(/^\d+$/.test(x.r)&&+x.r>=1&&+x.r<=300)){err.textContent='Заполните повторы у старта и у каждого сброса: от 1 до 300. Пустой сброс можно убрать.';return}}
+  const ws=rows.map(x=>(x.w===''&&c.mode==='body')?0:parseN(x.w));
+  if(!ws.every(w=>w>=0&&w<=2000)){err.textContent='Введите вес числом, например 30. Допустимо от 0 до 2000 кг.';return}
+  const s=getS(c.sid);if(!s){err.textContent='Тренировка не найдена. Закройте окно и откройте её снова.';return}
+  const e=s.entries[c.i],bid=c.bid||newId();
+  const sets=rows.map((x,k)=>({id:x.id,weight:Math.round(ws[k]*100)/100,reps:+x.r,warmup:false,rir:null,note:(x.n||'').trim(),myoBlockId:bid,myoRole:k===0?'activation':'mini',blockKind:'drop'}));
+  const first=e.sets.findIndex(x=>x.myoBlockId===bid),rest=e.sets.filter(x=>x.myoBlockId!==bid);
+  if(rest.length+sets.length>100){err.textContent='Максимум — 100 записей подходов на упражнение.';return}
+  const idx=first<0?rest.length:first;e.sets=[...rest.slice(0,idx),...sets,...rest.slice(idx)];
+  put('sessions/'+s.id,s);closeSheet();render();if(!c.bid)startTimer();
 }
 function libById(id){const r=LIBRARY.find(x=>x[0]===id);return r?{id:r[0],name:r[1],group:r[2],mode:r[3]}:null}
 function ensureExercise(id){
@@ -1794,10 +1872,10 @@ function backupText(root,sessions,now){
     for(const e of s.entries||[]){
       if(!(e.sets||[]).length&&!e.note)continue;
       const pl=e.plan?` [план ${e.plan.sets}×${e.plan.min}–${e.plan.max}]`:'';
-      L.push(e.exerciseName+pl+((e.sets||[]).some(x=>x.myoBlockId)?' · Myo-reps':''));
+      L.push(e.exerciseName+pl+((e.sets||[]).some(x=>x.myoBlockId&&x.blockKind!=='drop')?' · Myo-reps':'')+((e.sets||[]).some(x=>x.blockKind==='drop')?' · Дроп-сет':''));
       let k=0;
       const bl=[];for(const st of e.sets||[]){if(st.myoBlockId&&bl.indexOf(st.myoBlockId)<0)bl.push(st.myoBlockId)}
-      for(const st of e.sets||[]){const bi=st.myoBlockId?bl.indexOf(st.myoBlockId)+1:0;const lab=st.warmup?'Р':st.myoRole?(st.myoRole==='activation'?'А':'м'):String(++k);L.push(`  ${lab}) ${setStr(e.mode,st)}${st.myoRole?' [Myo-reps, блок '+bi+', '+(st.myoRole==='activation'?'активация':'мини-подход')+']':''}`)}
+      for(const st of e.sets||[]){const bi=st.myoBlockId?bl.indexOf(st.myoBlockId)+1:0;const dr=st.blockKind==='drop';const lab=st.warmup?'Р':st.myoRole?(st.myoRole==='activation'?(dr?'С':'А'):(dr?'д':'м')):String(++k);L.push(`  ${lab}) ${setStr(e.mode,st)}${st.myoRole?' ['+(dr?'Дроп-сет':'Myo-reps')+', блок '+bi+', '+(st.myoRole==='activation'?(dr?'старт':'активация'):(dr?'сброс':'мини-подход'))+']':''}`)}
       if(e.note)L.push('  Заметка: '+e.note);
       L.push('');
     }
@@ -2017,6 +2095,12 @@ const A={
     closeSheet();if(!ok)return;
     const s=getS(c.sid);if(!s)return;const e=s.entries[c.i];e.sets=e.sets.filter(x=>x.myoBlockId!==c.bid);put('sessions/'+s.id,s);render();
   },
+  dropadd(){dropOpen(null)},
+  dropedit(t){dropOpen(t.dataset.b)},
+  dropaddsub(){const c=sheetCtx;if(c&&c.type==='drop'){const last=c.drops.length?c.drops[c.drops.length-1].w:c.w,b=parseN(last);let nw='';if(isFinite(b))nw=fmtN(c.mode==='assistance'?b+5:Math.max(0,Math.round(b*0.8/2.5)*2.5));c.drops.push({id:newId(),w:nw,r:'',n:''});dropRerender()}},
+  dropdelsub(t){const c=sheetCtx;if(c&&c.type==='drop'){c.drops.splice(+t.dataset.i,1);dropRerender()}},
+  dropsave:dropSave,
+  async dropdel(){const c=sheetCtx;if(!c||c.type!=='drop')return;const ok=await confirmSheet({title:'Удалить дроп-сет?',text:'Будут удалены старт и все сбросы этого блока.',ok:'Удалить',danger:true});closeSheet();if(!ok)return;const s=getS(c.sid);if(!s)return;const e=s.entries[c.i];e.sets=e.sets.filter(x=>x.myoBlockId!==c.bid);put('sessions/'+s.id,s);render()},
   addwu(){openSetSheet(null,true)},
   planopen(){S.ui.planOpen=!S.ui.planOpen;render()},
   eplan(t){const s=curSession();if(!s)return;const e=s.entries[S.ui.exIdx];e.plan=stepPlan(e.plan||{sets:3,min:8,max:12,rir:2},t.dataset.f2,+t.dataset.v);put('sessions/'+s.id,s);render()},
@@ -2107,6 +2191,7 @@ document.addEventListener('input',ev=>{
   else if(f==='aname'){S.ui.auth.name=t.value}
   else if(f==='wname'){if(S.ui.draft){const p=S.ui.draft.prog;p.weekNames=p.weekNames||[];while(p.weekNames.length<p.plans.length)p.weekNames.push('');p.weekNames[S.ui.progWeek]=t.value}}
   else if(f.slice(0,3)==='my_'||f.slice(0,3)==='mi_'){myoInput(t)}
+  else if(f.slice(0,3)==='dr_'||f.slice(0,3)==='dd_'){dropInput(t)}
   else if(f==='gsurl'){try{localStorage.setItem('podhod.gs.url',t.value.trim())}catch(e){}}
   else if(f==='pname'){if(S.ui.draft)S.ui.draft.prog.name=t.value}
   else if(f==='dname'){if(S.ui.draft)S.ui.draft.prog.dayNames[+t.dataset.d]=t.value}
