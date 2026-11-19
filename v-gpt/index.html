@@ -460,7 +460,7 @@ html[data-pattern="off"] .sheet::before,html[data-pattern="off"] .emptyst::befor
 .yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .tech-body img{width:100%;border-radius:12px;display:block}
 
-.legend{display:flex;gap:14px;font-size:11px;color:var(--muted);margin:2px 0 0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--muted);margin:2px 0 0}
 .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
 .pnav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 12px}
 .pnav>div{text-align:center}
@@ -1215,7 +1215,7 @@ function storageInfo(){
 function settingsView(){
   const p=S.program,n=Object.keys(S.sessions).length,ct=curTheme();
   return `<div class="caps">Аккаунт, хранение, оформление</div><h1 style="margin-top:10px">Настройки</h1>
-  <div class="card"><div class="card-h"><h3>Аккаунт</h3></div><p class="small"><b>${esc(auth?auth.email:'')}</b></p><p class="meta">У каждого пользователя своя программа и своя история. Зайти можно с любого устройства.</p><p class="meta">Версия приложения: 15</p><button class="btn btn-sm btn-line" data-a="signout" style="margin-top:10px">Выйти из аккаунта</button></div>
+  <div class="card"><div class="card-h"><h3>Аккаунт</h3></div><p class="small"><b>${esc(auth?auth.email:'')}</b></p><p class="meta">У каждого пользователя своя программа и своя история. Зайти можно с любого устройства.</p><p class="meta">Версия приложения: 18</p><button class="btn btn-sm btn-line" data-a="signout" style="margin-top:10px">Выйти из аккаунта</button></div>
   <div class="card"><div class="card-h"><h3>Сохранение</h3></div>${storageInfo()}</div>
   <div class="card"><div class="card-h"><h3>Тема оформления</h3></div><div class="themes">${[...PALETTES.map(p=>[p.id,p.label,p.description,p.bg,p.accent]),['system','Как в iPhone','Светлая или тёмная сама','#777','#d3f489']].map(([k,t,d,b,a])=>`<button data-a="theme" data-v="${k}" aria-pressed="${ct===k}"><span class="sw" style="background:linear-gradient(135deg,${b} 50%,${a} 50%)"></span><span class="tt"><b>${t}</b><small>${d}</small></span></button>`).join('')}</div></div>
   <div class="card"><div class="card-h"><h3>Узор «асаноха»</h3></div><p class="meta" style="margin:0 0 10px">Тонкий фон на шапке, главной карточке, экране входа, окнах ввода подхода и пустых экранах.</p><div class="seg" style="margin:0">${[['on','Обычный'],['soft','Слабый'],['off','Выключен']].map(([k,t])=>`<button data-a="pattern" data-v="${k}" aria-pressed="${(()=>{try{return (localStorage.getItem(PATTERN_KEY)||'on')===k}catch(e){return k==='on'}})()}">${t}</button>`).join('')}</div></div>
@@ -1519,6 +1519,12 @@ function metricVal(e,mode,m){
 }
 function metricUnit(m,mode){return (m==='reps'||(m==='vol'&&mode==='body'))?'повт.':'кг'}
 function fmtV(v,m){if(v==null)return '—';if(m==='reps'||(m==='vol'))return Math.round(v).toLocaleString('ru-RU');return fmtN(Math.round(v*10)/10)}
+const KCLR={heavy:'#E69F00',medium:'#56B4E9',light:'var(--text)',normal:'var(--muted)'};
+function kindShape(k,x,y,r){
+  x=+x.toFixed(1);y=+y.toFixed(1);
+  return `<circle cx="${x}" cy="${y}" r="${r}" fill="var(--surface)" stroke="${KCLR[k]||KCLR.normal}" stroke-width="2.6"/>`;
+}
+function kindMark(k,sz){sz=sz||12;return `<svg width="${sz}" height="${sz}" viewBox="0 0 12 12" style="vertical-align:-1px;flex:none" aria-hidden="true">${kindShape(k,6,6.4,3.8)}</svg>`}
 function lineChart(pts,m){
   const W=320,H=150,PL=36,PR=10,PT=10,PB=22;
   let mn=Math.min(...pts.map(p=>p.v)),mx=Math.max(...pts.map(p=>p.v));if(mn===mx){mn-=1;mx+=1}
@@ -1529,7 +1535,7 @@ function lineChart(pts,m){
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="График показателя по тренировкам">
     ${[mx,(mx+mn)/2,mn].map(t=>`<line x1="${PL}" x2="${W-PR}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" style="stroke:var(--line)" stroke-width="1"/><text x="${PL-5}" y="${(y(t)+3).toFixed(1)}" font-size="9" text-anchor="end" style="fill:var(--muted)">${fmtV(t,m)}</text>`).join('')}
     <path d="${path}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
-    ${pts.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3.6" style="fill:var(--surface);stroke:${kc[p.k]||kc.normal}" stroke-width="2"/>`).join('')}
+    ${pts.map((p,i)=>kindShape(p.k,x(i),y(p.v),4.6)).join('')}
     <text x="${PL}" y="${H-6}" font-size="9" style="fill:var(--muted)">${esc(fmtShort(pts[0].d))}</text>
     <text x="${W-PR}" y="${H-6}" font-size="9" text-anchor="end" style="fill:var(--muted)">${esc(fmtShort(pts[pts.length-1].d))}</text>
   </svg>`;
@@ -1546,7 +1552,7 @@ function progressBlock(rows,mode,noChips){
     <div style="font-size:22px;font-weight:700;letter-spacing:-.03em;margin:6px 0 2px">${fmtV(first.v,m)} → ${fmtV(last.v,m)} <span class="meta" style="font-size:13px;font-weight:500">${unit}</span></div>
     <div class="meta" style="color:var(${d===0?'--muted':(better?'--ok':'--warn')})">${d>0?'+':(d<0?'−':'')}${fmtV(Math.abs(d),m)} ${unit} (${pct>0?'+':(pct<0?'−':'')}${Math.abs(pct)}%) · ${pts.length} ${plural(pts.length,'тренировка','тренировки','тренировок')}</div>
     ${lineChart(pts,m)}
-    ${kind==='all'?`<div class="legend"><span><i style="background:var(--w3)"></i>тяжёлая</span><span><i style="background:var(--w2)"></i>средняя</span><span><i style="background:var(--w1)"></i>лёгкая</span></div>`:''}
+    ${kind==='all'?`<div class="legend"><span>${kindMark('heavy')} тяжёлая (оранжевый)</span><span>${kindMark('medium')} средняя (голубой)</span><span>${kindMark('light')} лёгкая (чёрно-белый)</span></div>`:''}
     <p class="meta" style="margin:8px 0 0;font-size:12px">${m==='e1'?'Расчётный максимум на одно повторение: вес × (1 + повторы / 30), только подходы до 12 повторений. Это оценка, а не проверенный максимум.':(m==='vol'?(mode==='body'?'Сумма повторений всех рабочих подходов.':'Сумма «вес × повторы» по всем рабочим подходам.'):(m==='assist'?'Чем меньше помощь, тем лучше.':'Лучший рабочий подход тренировки.'))}</p></div>`;
   return h;
 }
@@ -1575,11 +1581,12 @@ function recordsBlock(){
   const rk=S.ui.reckind||'all',rec0=computeRecords(),rec=rk==='all'?rec0:rec0.filter(r=>r.kind===rk),all=!!S.ui.recAll,list=all?rec:rec.slice(0,12);
   const chips=`<div class="chips" role="group" aria-label="Тип недели">${KIND_ORDER.map(([k,t])=>`<button class="chip" data-a="areckind" data-v="${k}" aria-pressed="${k===rk}">${t}</button>`).join('')}</div><p class="meta" style="margin:0 0 8px;font-size:12px">Результат сравнивается только с прежними результатами того же типа недели: вес тяжёлой недели не сравнивается с лёгкой.</p>`;
   if(!rec.length)return `<div class="sec-h"><h2>Рекорды</h2></div>${chips}<div class="card emptyst">${I.hist}<b>Рекордов пока нет</b>Они появятся, когда вы превзойдёте свой прежний результат в упражнении на неделе того же типа.</div>`;
-  return `<div class="sec-h"><h2>Рекорды</h2><span class="meta">${rec.length}</span></div>${chips}<div class="card" style="padding:6px 16px">${list.map(r=>`<button class="rec" data-a="recopen" data-id="${esc(r.e.exerciseId)}"><div class="d"><span>${esc(fmtDate(r.s.date))}</span><span>${esc(sessPos(r.s)||'')}</span></div><div class="nm">${esc(r.e.exerciseName)}${KIND_ONE[r.kind]?` <span style="color:${KINDS[r.kind].color};font-weight:500;font-size:12px">● ${esc(KIND_ONE[r.kind])}</span>`:''}</div>${r.items.map(it=>`<div class="it"><b>${it.t}:</b> ${esc(it.now)} <span class="muted">(было ${esc(it.was)})</span></div>`).join('')}</button>`).join('')}${rec.length>12?`<button class="lnk" data-a="arecall" style="width:100%;justify-content:center">${all?'Показать меньше':'Показать все ('+rec.length+')'}</button>`:''}</div>`;
+  return `<div class="sec-h"><h2>Рекорды</h2><span class="meta">${rec.length}</span></div>${chips}<div class="card" style="padding:6px 16px">${list.map(r=>`<button class="rec" data-a="recopen" data-id="${esc(r.e.exerciseId)}"><div class="d"><span>${esc(fmtDate(r.s.date))}</span><span>${esc(sessPos(r.s)||'')}</span></div><div class="nm">${esc(r.e.exerciseName)}${KIND_ONE[r.kind]?` <span style="font-weight:500;font-size:12px">${kindMark(r.kind)} ${esc(KIND_ONE[r.kind])}</span>`:''}</div>${r.items.map(it=>`<div class="it"><b>${it.t}:</b> ${esc(it.now)} <span class="muted">(было ${esc(it.was)})</span></div>`).join('')}</button>`).join('')}${rec.length>12?`<button class="lnk" data-a="arecall" style="width:100%;justify-content:center">${all?'Показать меньше':'Показать все ('+rec.length+')'}</button>`:''}</div>`;
 }
 function isoOf(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
 function dayMonth(d){return d.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}
 function period(kind,off){
+  if(kind==='all')return {from:'0000-01-01',to:'9999-12-31',label:'За всё время'};
   const now=new Date();let a,b,label;
   if(kind==='month'){a=new Date(now.getFullYear(),now.getMonth()+off,1);b=new Date(a.getFullYear(),a.getMonth()+1,1);label=CAP(a.toLocaleDateString('ru-RU',{month:'long',year:'numeric'}))}
   else{
@@ -1609,11 +1616,11 @@ function aggregate(R){
 }
 function fmtVol(v){return Math.round(v).toLocaleString('ru-RU')+' кг'}
 function analysisView(){
-  const kind=S.ui.aKind||'week',off=S.ui.aOff||0,R=period(kind,off),P=period(kind,off-1),cur=aggregate(R),prev=aggregate(P);
+  const kind=S.ui.aKind||'week',off=kind==='all'?0:(S.ui.aOff||0),R=period(kind,off),P=kind==='all'?{from:'9999-12-31',to:'9999-12-31'}:period(kind,off-1),cur=aggregate(R),prev=aggregate(P);
   const vs=kind==='week'?'к пред. неделе':'к пред. месяцу';
-  const dl=(v,pv,f)=>pv>0?(off===0?'пред. '+(kind==='week'?'неделя':'месяц')+': '+f(pv):((v-pv)>=0?'+':'−')+Math.abs(Math.round((v-pv)/pv*100))+'% '+vs):'нет данных за прошлый период';
-  let h=`<div class="seg" style="margin-top:0">${[['week','Неделя'],['month','Месяц']].map(([k,t])=>`<button data-a="aperiod" data-v="${k}" aria-pressed="${kind===k}">${t}</button>`).join('')}</div>
-  <div class="pnav"><button data-a="anav" data-v="-1" aria-label="Назад">${I.back}</button><div><b>${esc(R.label)}</b><small>${off===0?'сейчас':(kind==='week'?pluralWeeks(-off)+' назад':(-off)+' мес. назад')}</small></div><button data-a="anav" data-v="1" ${off>=0?'disabled':''} aria-label="Вперёд" style="transform:scaleX(-1)">${I.back}</button></div>`;
+  const dl=(v,pv,f)=>kind==='all'?'за всё время':pv>0?(off===0?'пред. '+(kind==='week'?'неделя':'месяц')+': '+f(pv):((v-pv)>=0?'+':'−')+Math.abs(Math.round((v-pv)/pv*100))+'% '+vs):'нет данных за прошлый период';
+  let h=`<div class="seg" style="margin-top:0">${[['week','Неделя'],['month','Месяц'],['all','Всё время']].map(([k,t])=>`<button data-a="aperiod" data-v="${k}" aria-pressed="${kind===k}">${t}</button>`).join('')}</div>
+  <div class="pnav"${kind==='all'?' style="justify-content:center"':''}><button data-a="anav" data-v="-1" aria-label="Назад"${kind==='all'?' hidden':''}>${I.back}</button><div><b>${esc(R.label)}</b><small>${kind==='all'?'все завершённые тренировки':off===0?'сейчас':(kind==='week'?pluralWeeks(-off)+' назад':(-off)+' мес. назад')}</small></div><button data-a="anav" data-v="1" ${off>=0?'disabled':''} ${kind==='all'?'hidden':''} aria-label="Вперёд" style="transform:scaleX(-1)">${I.back}</button></div>`;
   if(!cur.n)h+=`<div class="card emptyst">${I.hist}<b>В этом периоде тренировок нет</b>Выберите другой период стрелками.</div>`;
   else{
     h+=`<div class="stats" style="grid-template-columns:1fr 1fr">
@@ -1708,15 +1715,15 @@ function exDyn(x,R){
 function dynTxt(x,d){
   const unit=x.mode==='body'?' повт.':' кг',nm=(KIND_ONE[d.k]||'').replace(' неделя','');
   const val=(x.mode==='body'?d.v:fmtN(Math.round(d.v*10)/10))+unit;
-  if(d.pv==null)return `<div class="dyn"><i style="background:${KINDS[d.k].color}"></i><span>${nm?nm+' · ':''}<b>${esc(val)}</b> <span class="muted">· первая запись в этом типе недели</span></span></div>`;
+  if(d.pv==null)return `<div class="dyn">${kindMark(d.k)}<span>${nm?nm+' · ':''}<b>${esc(val)}</b> <span class="muted">· первая запись в этом типе недели</span></span></div>`;
   const df=Math.round((d.v-d.pv)*100)/100,good=x.mode==='assistance'?df<0:df>0;
   const col=df===0?'--muted':(good?'--ok':'--warn');
-  return `<div class="dyn"><i style="background:${KINDS[d.k].color}"></i><span>${nm?nm+' · ':''}<b>${esc(val)}</b> <span style="color:var(${col})">${df===0?'без изменений':(df>0?'+':'−')+fmtN(Math.abs(df))}</span> <span class="muted">(было ${esc((x.mode==='body'?d.pv:fmtN(Math.round(d.pv*10)/10))+unit)})</span></span></div>`;
+  return `<div class="dyn">${kindMark(d.k)}<span>${nm?nm+' · ':''}<b>${esc(val)}</b> <span style="color:var(${col})">${df===0?'без изменений':(df>0?'+':'−')+fmtN(Math.abs(df))}</span> <span class="muted">(было ${esc((x.mode==='body'?d.pv:fmtN(Math.round(d.pv*10)/10))+unit)})</span></span></div>`;
 }
 function exBody(x){
   const rows=exAnalysisRows(x.id);
   let h=progressBlock(rows,x.mode,false);
-  h+=`<div class="card" style="padding:6px 14px">${rows.slice(0,10).map(r=>`<div class="hrow"><div class="d"><span>${esc(fmtShort(r.s.date))} · <span style="color:${KINDS[sessKindKey(r.s)].color}">●</span> ${esc(sname(r.s))}</span><span>${entryVol(r.e)>0?esc(fmtVol(entryVol(r.e))):''}</span></div>${subTag(r)}<div class="s">${entryLine(r.e)}</div></div>`).join('')}
+  h+=`<div class="card" style="padding:6px 14px">${rows.slice(0,10).map(r=>`<div class="hrow"><div class="d"><span>${esc(fmtShort(r.s.date))} · ${kindMark(sessKindKey(r.s))} ${esc(sname(r.s))}</span><span>${entryVol(r.e)>0?esc(fmtVol(entryVol(r.e))):''}</span></div>${subTag(r)}<div class="s">${entryLine(r.e)}</div></div>`).join('')}
     <button class="lnk" data-a="recopen" data-id="${esc(x.id)}" style="width:100%;justify-content:center">Вся история и калькулятор</button></div>`;
   return h;
 }
@@ -1755,7 +1762,10 @@ function stagText(st){return 'Застой: три последние запис
 function weeklySets(n,R,kind,off){
   if(kind==='week'&&off===0)return '<div class="meta" style="font-size:12px;margin:0 0 6px">Неделя ещё идёт: оценка появится после её завершения.</div>';
   let per=n;
-  if(kind==='month'){
+  if(kind==='all'){
+    const ds=sessionsList().filter(x=>x.status==='done').map(x=>x.date).sort();
+    const a=new Date((ds[0]||isoOf(new Date()))+'T00:00:00'),days=Math.max(7,Math.round((new Date()-a)/864e5));per=n/(days/7);
+  }else if(kind==='month'){
     const a=new Date(R.from+'T00:00:00'),b=new Date(R.to+'T00:00:00'),end=b<new Date()?b:new Date();
     const days=Math.max(7,Math.round((end-a)/864e5));per=n/(days/7);
   }
